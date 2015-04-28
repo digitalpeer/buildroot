@@ -1,0 +1,111 @@
+diff -Naur cwiid-0.6.00/configure.ac cwiid-0.6.00-python/configure.ac
+--- cwiid-0.6.00/configure.ac	2015-04-27 18:09:34.193838643 -0700
++++ cwiid-0.6.00-python/configure.ac	2015-04-27 20:14:42.697624912 -0700
+@@ -74,7 +74,7 @@
+ if test $PYTHON; then
+ 	PYTHON_VERSION=[`$PYTHON -c 'import sys; print sys.version[:3]'`]
+ 	AC_SUBST(PYTHON_VERSION)
+-	AC_DEFINE([HAVE_PYTHON],1,[Define to 1 if python support is enabled])
++#	AC_DEFINE([HAVE_PYTHON],1,[Define to 1 if python support is enabled])
+ fi
+ 
+ AC_CHECK_LIB([pthread], [pthread_create],,
+diff -Naur cwiid-0.6.00/Makefile.in cwiid-0.6.00-python/Makefile.in
+--- cwiid-0.6.00/Makefile.in	2015-04-27 18:09:34.193838643 -0700
++++ cwiid-0.6.00-python/Makefile.in	2015-04-27 18:24:46.981812661 -0700
+@@ -5,9 +5,9 @@
+ LIB_DIRS = libcwiid
+ BIN_DIRS = @WMGUI@ wminput lswm
+ DOC_DIRS = man doc
+-ifdef PYTHON
++#ifdef PYTHON
+ BIND_DIRS = python
+-endif
++#endif
+ 
+ SUB_DIRS = $(LIB_DIRS) $(BIN_DIRS) $(DOC_DIRS) $(BIND_DIRS) wmdemo
+ 
+diff -Naur cwiid-0.6.00/python/Makefile.in cwiid-0.6.00-python/python/Makefile.in
+--- cwiid-0.6.00/python/Makefile.in	2015-04-27 18:09:20.905839021 -0700
++++ cwiid-0.6.00-python/python/Makefile.in	2015-05-01 21:09:28.575693796 -0700
+@@ -1,24 +1,29 @@
+-#Copyright (C) 2007 Justin M. Tulloss
++#
++# distutils is severely lacking when it comes to cross compiling.  It can't even handle the basic case.
++#
+ 
+ include @top_builddir@/defs.mak
+ 
+-ifdef ROOTDIR
+-	SET_ROOT_DIR = "--root=$(ROOTDIR)"
+-endif
++LDFLAGS = -L../libcwiid -L$(STAGING_DIR)/usr/lib
++CFLAGS = -Os -DNDEBUG -Wstrict-prototypes -fPIC -I../libcwiid -I$(STAGING_DIR)/usr/include -I$(STAGING_DIR)/usr/include/python2.7/
+ 
+-all:
+-	$(PYTHON) setup.py build_ext $(DEBUGFLAGS) -I@top_builddir@/libcwiid -L@top_builddir@/libcwiid -lcwiid -lbluetooth
++all: cwiid.so
++
++%.o: %.c
++	$(CC) -c $(CFLAGS) -o $@ $<
++
++cwiid.so: Wiimote.o cwiidmodule.o
++	$(CC) -shared $^ $(LDFLAGS) -lcwiid -lpython2.7 -lbluetooth -o $@
+ 
+ install:
+-	$(PYTHON) setup.py install --install-lib=${libdir}/python@PYTHON_VERSION@/site-packages $(SET_ROOT_DIR)
++	cp cwiid.so $(ROOTDIR)/${libdir}/python2.7/site-packages/
+ 
+ uninstall:
+-	rm -f $(ROOTDIR)${libdir}/python@PYTHON_VERSION@/site-packages/cwiid.so
++	rm -f $(ROOTDIR)/${libdir}/python2.7/site-packages/cwiid.so
+ 
+ clean:
+-	rm -rf build
++	rm -f cwiid.so Wiimote.o cwiidmodule.o
+ 
+ distclean: clean
+-	rm Makefile
+ 
+-.PHONY: all install uninstall clean distclean
++.PHONY: all install clean distclean
+diff -Naur cwiid-0.6.00/wminput/main.c cwiid-0.6.00-python/wminput/main.c
+--- cwiid-0.6.00/wminput/main.c	2015-04-27 18:09:20.909839021 -0700
++++ cwiid-0.6.00-python/wminput/main.c	2015-04-27 20:14:55.297624553 -0700
+@@ -59,7 +59,6 @@
+  *  * Initial ChangeLog
+  *  * type audit (stdint, const, char booleans)
+  */
+-
+ #ifdef HAVE_CONFIG_H
+ #include "config.h"
+ #endif
+diff -Naur cwiid-0.6.00/wminput/Makefile.in cwiid-0.6.00-python/wminput/Makefile.in
+--- cwiid-0.6.00/wminput/Makefile.in	2015-04-27 18:09:20.909839021 -0700
++++ cwiid-0.6.00-python/wminput/Makefile.in	2015-04-27 20:15:40.369623270 -0700
+@@ -20,11 +20,11 @@
+ 
+ YFLAGS += -d
+ 
+-ifdef PYTHON
+-	SOURCES += py_plugin.c
+-	CFLAGS += -I/usr/include/python@PYTHON_VERSION@
+-	LDLIBS += -lpython@PYTHON_VERSION@
+-endif
++#ifdef PYTHON
++#	SOURCES += py_plugin.c
++#	CFLAGS += -I/usr/include/python@PYTHON_VERSION@
++#	LDLIBS += -lpython@PYTHON_VERSION@
++#endif
+ 
+ SOURCES += $(LAST_SOURCES)
+ 
+@@ -38,7 +38,7 @@
+ #uninstall: uninstall_configs
+ 
+ make_plugins:
+-	$(MAKE) $(MAKECMDGOALS) -C plugins
++#	$(MAKE) $(MAKECMDGOALS) -C plugins
+ 
+ install_configs:
+ 	install -d $(WMINPUT_CONFIG_DIR)
